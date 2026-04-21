@@ -1,0 +1,19 @@
+controllers:
+    resource:
+        path: ../src/
+        namespace: App
+    type: attribute
+
+api_platform:
+    resource: .
+    type: api_platform
+    prefix: /api
+
+auth_login:
+    path: /api/auth/login
+    methods: [POST]
+
+auth_refresh:
+    path: /api/auth/refresh
+    methods: [POST]
+    controller: App\Identity\Presentation\Controller\RefreshTokenController

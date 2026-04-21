@@ -1,0 +1,48 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        types:
+            uuid: Symfony\Bridge\Doctrine\Types\UuidType
+    orm:
+        auto_generate_proxy_classes: true
+        enable_lazy_ghost_objects: true
+        report_fields_where_declared: true
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+        auto_mapping: true
+        mappings:
+            Identity:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Identity/Domain/Entity'
+                prefix: 'App\Identity\Domain\Entity'
+                alias: Identity
+            Organization:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Organization/Domain/Entity'
+                prefix: 'App\Organization\Domain\Entity'
+                alias: Organization
+            Vault:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Vault/Domain/Entity'
+                prefix: 'App\Vault\Domain\Entity'
+                alias: Vault
+            Sharing:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Sharing/Domain/Entity'
+                prefix: 'App\Sharing\Domain\Entity'
+                alias: Sharing
+            Audit:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Audit/Domain/Entity'
+                prefix: 'App\Audit\Domain\Entity'
+                alias: Audit
+
+when@test:
+    doctrine:
+        dbal:
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'

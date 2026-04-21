@@ -1,0 +1,52 @@
+parameters:
+    app.encryption_key: '%env(ENCRYPTION_KEY)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DoctrineMigrations/'
+            - '../src/*/Domain/Entity/'
+            - '../src/*/Domain/Enum/'
+            - '../src/*/Domain/ValueObject/'
+            - '../src/Kernel.php'
+
+    # Alias repositories
+    App\Identity\Domain\Repository\UserRepositoryInterface:
+        alias: App\Identity\Infrastructure\Doctrine\UserRepository
+
+    App\Organization\Domain\Repository\OrganizationRepositoryInterface:
+        alias: App\Organization\Infrastructure\Doctrine\OrganizationRepository
+
+    App\Organization\Domain\Repository\MembershipRepositoryInterface:
+        alias: App\Organization\Infrastructure\Doctrine\MembershipRepository
+
+    App\Vault\Domain\Repository\SecretRepositoryInterface:
+        alias: App\Vault\Infrastructure\Doctrine\SecretRepository
+
+    App\Vault\Domain\Repository\SecretFolderRepositoryInterface:
+        alias: App\Vault\Infrastructure\Doctrine\SecretFolderRepository
+
+    App\Sharing\Domain\Repository\SecretShareRepositoryInterface:
+        alias: App\Sharing\Infrastructure\Doctrine\SecretShareRepository
+
+    App\Audit\Domain\Repository\AuditLogRepositoryInterface:
+        alias: App\Audit\Infrastructure\Doctrine\AuditLogRepository
+
+    App\Identity\Domain\Repository\RefreshTokenRepositoryInterface:
+        alias: App\Identity\Infrastructure\Doctrine\RefreshTokenRepository
+
+    App\Shared\Infrastructure\Crypto\AesGcmEncryptionService:
+        arguments:
+            $encryptionKey: '%app.encryption_key%'
+
+    App\Shared\Infrastructure\Crypto\EncryptionServiceInterface:
+        alias: App\Shared\Infrastructure\Crypto\AesGcmEncryptionService
+
+    monolog.logger.audit:
+        alias: monolog.logger
+        public: false

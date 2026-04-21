@@ -1,0 +1,8 @@
+.git
+.env.local
+.env.*.local
+var/cache/
+var/log/
+vendor/
+config/jwt/
+*.md
