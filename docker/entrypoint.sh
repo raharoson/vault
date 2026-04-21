@@ -42,7 +42,7 @@ fi
 # Régénérer le cache Symfony (après postgres pour ne pas bloquer la warmup)
 rm -rf var/cache/*
 php bin/console cache:warmup
-php bin/console assets:install public --symlink 2>/dev/null || true
+php bin/console assets:install public --symlink --relative 2>/dev/null || true
 
 # Appliquer les migrations Doctrine (ne bloque pas si aucune migration n'existe)
 php bin/console doctrine:migrations:migrate --no-interaction 2>&1 || true
