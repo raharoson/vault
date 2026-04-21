@@ -1,0 +1,606 @@
+{
+  "info": {
+    "name": "LockSelf Vault API",
+    "description": "Collection complète couvrant tous les cas d'utilisation de l'API LockSelf Vault.\n\n## Setup\n1. Importer la collection\n2. Créer un environment avec `base_url = http://localhost:8000`\n3. Exécuter **Login** — le token JWT et le refresh_token sont automatiquement sauvegardés\n4. Pour les endpoints `/api/secrets`, ajouter `X-Organization-Id` via la variable `org_id`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",       "value": "http://localhost:8000" },
+    { "key": "jwt_token",      "value": "" },
+    { "key": "refresh_token",  "value": "" },
+    { "key": "org_id",         "value": "" },
+    { "key": "secret_id",      "value": "" },
+    { "key": "membership_id",  "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 — Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token)         pm.collectionVariables.set('jwt_token', json.token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('JWT token present', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "description": "Authentification par email/mot de passe. Retourne un JWT (access token) et un refresh token. Les deux sont automatiquement sauvegardés dans les variables de la collection."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token)         pm.collectionVariables.set('jwt_token', json.token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New JWT token present', () => pm.expect(json.token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api","auth","refresh"] },
+            "description": "Renouvelle l'access token à partir d'un refresh token valide. Invalide l'ancien refresh token (rotation)."
+          }
+        },
+        {
+          "name": "Refresh Token — invalide (401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"token-invalide-ou-expire\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api","auth","refresh"] },
+            "description": "Doit retourner 401 si le refresh token est invalide ou expiré."
+          }
+        },
+        {
+          "name": "Refresh Token — corps vide (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api","auth","refresh"] },
+            "description": "Doit retourner 400 si le champ refresh_token est absent."
+          }
+        },
+        {
+          "name": "Profil utilisateur courant (GET /me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/me", "host": ["{{base_url}}"], "path": ["api","me"] },
+            "description": "Retourne les informations du compte connecté : id, email, firstName, lastName, status, mfaEnabled."
+          }
+        },
+        {
+          "name": "Profil — non authentifié (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/me", "host": ["{{base_url}}"], "path": ["api","me"] },
+            "description": "Doit retourner 401 sans JWT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Organizations",
+      "item": [
+        {
+          "name": "Lister mes organisations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Array', () => pm.expect(json).to.be.an('array'));",
+                  "if (json.length > 0) pm.collectionVariables.set('org_id', json[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/organizations", "host": ["{{base_url}}"], "path": ["api","organizations"] },
+            "description": "Liste toutes les organisations dont l'utilisateur est membre. Sauvegarde automatiquement le premier org_id."
+          }
+        },
+        {
+          "name": "Créer une organisation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('org_id', json.id);",
+                  "pm.test('Slug généré', () => pm.expect(json.slug).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Corp\",\n  \"description\": \"Organisation principale de test\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/organizations", "host": ["{{base_url}}"], "path": ["api","organizations"] },
+            "description": "Crée une organisation. Le créateur devient automatiquement OWNER. Le slug est généré à partir du nom (unique)."
+          }
+        },
+        {
+          "name": "Créer une organisation — nom manquant (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Sans nom\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/organizations", "host": ["{{base_url}}"], "path": ["api","organizations"] },
+            "description": "Doit retourner 422 avec les erreurs de validation si le champ `name` est absent."
+          }
+        },
+        {
+          "name": "Détail d'une organisation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}"]
+            },
+            "description": "Retourne les détails d'une organisation. Requiert d'en être membre (OrganizationVoter::VIEW)."
+          }
+        },
+        {
+          "name": "Détail — organisation inconnue (404)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/organizations/00000000-0000-0000-0000-000000000000",
+              "host": ["{{base_url}}"], "path": ["api","organizations","00000000-0000-0000-0000-000000000000"]
+            },
+            "description": "Doit retourner 404 pour un UUID inexistant."
+          }
+        },
+        {
+          "name": "Lister les membres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Array de memberships', () => pm.expect(json).to.be.an('array'));",
+                  "if (json.length > 0) pm.collectionVariables.set('membership_id', json[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members"]
+            },
+            "description": "Retourne la liste des membres (id, userId, email, role, joinedAt). Sauvegarde le premier membership_id."
+          }
+        },
+        {
+          "name": "Ajouter un membre",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('membership_id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bob@example.com\",\n  \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members"]
+            },
+            "description": "Ajoute un utilisateur existant à l'organisation. Rôles disponibles : owner, admin, member, viewer. Requiert MANAGE_MEMBERS (owner ou admin)."
+          }
+        },
+        {
+          "name": "Ajouter un membre — rôle admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carol@example.com\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members"]
+            }
+          }
+        },
+        {
+          "name": "Ajouter un membre — déjà membre (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bob@example.com\",\n  \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members"]
+            },
+            "description": "Doit retourner 409 si l'utilisateur est déjà membre de l'organisation."
+          }
+        },
+        {
+          "name": "Ajouter un membre — utilisateur inexistant (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+              { "key": "Content-Type",   "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"unknown@example.com\",\n  \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members"]
+            },
+            "description": "Doit retourner 404 si aucun compte n'existe avec cet email."
+          }
+        },
+        {
+          "name": "Retirer un membre",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/organizations/{{org_id}}/members/{{membership_id}}",
+              "host": ["{{base_url}}"], "path": ["api","organizations","{{org_id}}","members","{{membership_id}}"]
+            },
+            "description": "Supprime le membership. Retourne 204. Requiert MANAGE_MEMBERS. Lever une erreur 422 si on tente de retirer le dernier OWNER."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Secrets (Vault)",
+      "item": [
+        {
+          "name": "Lister les secrets de l'organisation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Array de secrets', () => pm.expect(json).to.be.an('array'));",
+                  "if (json.length > 0) pm.collectionVariables.set('secret_id', json[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] },
+            "description": "Liste les secrets visibles pour l'utilisateur dans l'organisation (propriété + partages actifs). Le payload n'est PAS décrypté sur la liste. Sauvegarde le premier secret_id."
+          }
+        },
+        {
+          "name": "Lister — sans X-Organization-Id (400/422)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] },
+            "description": "Doit échouer si le header X-Organization-Id est absent."
+          }
+        },
+        {
+          "name": "Créer un secret — mot de passe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('secret_id', json.id);",
+                  "pm.test('Payload absent (chiffré)', () => pm.expect(json.payload).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"GitHub Personal Access Token\",\n  \"type\": \"password\",\n  \"payload\": \"{\\\"username\\\": \\\"alice\\\", \\\"password\\\": \\\"ghp_supersecret123\\\"}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] },
+            "description": "Crée un secret de type `password`. Le payload est chiffré AES-256-GCM avant persistance. Types disponibles : password, secure_note, api_key."
+          }
+        },
+        {
+          "name": "Créer un secret — note sécurisée",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Instructions serveur de prod\",\n  \"type\": \"secure_note\",\n  \"payload\": \"SSH sur 10.0.0.1 avec clé RSA. Ne jamais partager.\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] }
+          }
+        },
+        {
+          "name": "Créer un secret — clé API",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Stripe API Key\",\n  \"type\": \"api_key\",\n  \"payload\": \"{\\\"key\\\": \\\"sk_live_xxx\\\", \\\"env\\\": \\\"production\\\"}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] }
+          }
+        },
+        {
+          "name": "Créer un secret — validation échouée (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"password\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/secrets", "host": ["{{base_url}}"], "path": ["api","secrets"] },
+            "description": "Doit retourner 422 : title et payload sont obligatoires."
+          }
+        },
+        {
+          "name": "Lire un secret (avec déchiffrement)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Payload déchiffré présent', () => pm.expect(json.payload).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/secrets/{{secret_id}}",
+              "host": ["{{base_url}}"], "path": ["api","secrets","{{secret_id}}"]
+            },
+            "description": "Retourne le secret avec le payload déchiffré. Loggue AuditAction::SECRET_READ. Requiert SecretVoter::VIEW."
+          }
+        },
+        {
+          "name": "Lire un secret — accès refusé (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/secrets/00000000-0000-0000-0000-000000000001",
+              "host": ["{{base_url}}"], "path": ["api","secrets","00000000-0000-0000-0000-000000000001"]
+            },
+            "description": "Doit retourner 403 ou 404 si l'utilisateur n'a pas accès."
+          }
+        },
+        {
+          "name": "Modifier un secret",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"GitHub PAT — mis à jour\",\n  \"payload\": \"{\\\"username\\\": \\\"alice\\\", \\\"password\\\": \\\"ghp_newtoken456\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/secrets/{{secret_id}}",
+              "host": ["{{base_url}}"], "path": ["api","secrets","{{secret_id}}"]
+            },
+            "description": "Met à jour le titre et/ou le payload (rechiffrement). Requiert SecretVoter::EDIT (propriétaire ou partage EDIT/SHARE)."
+          }
+        },
+        {
+          "name": "Modifier — payload uniquement",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" },
+              { "key": "Content-Type",     "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payload\": \"{\\\"username\\\": \\\"alice\\\", \\\"password\\\": \\\"newpassword\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/secrets/{{secret_id}}",
+              "host": ["{{base_url}}"], "path": ["api","secrets","{{secret_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Supprimer un secret",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization",    "value": "Bearer {{jwt_token}}" },
+              { "key": "X-Organization-Id","value": "{{org_id}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/secrets/{{secret_id}}",
+              "host": ["{{base_url}}"], "path": ["api","secrets","{{secret_id}}"]
+            },
+            "description": "Supprime définitivement un secret. Requiert SecretVoter::DELETE (propriétaire ou owner/admin de l'org). Retourne 204 No Content."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — API Platform (Hypermedia)",
+      "item": [
+        {
+          "name": "Documentation OpenAPI (HTML)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/html" }],
+            "url": { "raw": "{{base_url}}/api/docs", "host": ["{{base_url}}"], "path": ["api","docs"] },
+            "description": "Interface Swagger/Hydra générée par API Platform. Accessible sans authentification."
+          }
+        },
+        {
+          "name": "Documentation OpenAPI (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/vnd.openapi+json" }],
+            "url": { "raw": "{{base_url}}/api/docs", "host": ["{{base_url}}"], "path": ["api","docs"] },
+            "description": "Schéma OpenAPI 3.x au format JSON."
+          }
+        },
+        {
+          "name": "Contexte JSON-LD",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/ld+json" }],
+            "url": { "raw": "{{base_url}}/api/contexts/Entrypoint", "host": ["{{base_url}}"], "path": ["api","contexts","Entrypoint"] },
+            "description": "Point d'entrée Hydra / JSON-LD."
+          }
+        }
+      ]
+    }
+  ]
+}
