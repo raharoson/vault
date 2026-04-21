@@ -9,6 +9,8 @@ api_platform:
         jsonld: ['application/ld+json']
         jsonopenapi: ['application/vnd.openapi+json']
         html: ['text/html']
+    enable_swagger_ui: true
+    enable_swagger: true
     defaults:
         stateless: true
         cache_headers:
