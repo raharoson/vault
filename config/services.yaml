@@ -50,3 +50,8 @@ services:
     monolog.logger.audit:
         alias: monolog.logger
         public: false
+
+    App\Shared\Infrastructure\OpenApi\OpenApiFactory:
+        decorates: api_platform.openapi.factory
+        arguments:
+            $decorated: '@.inner'
