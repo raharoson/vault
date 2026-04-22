@@ -52,6 +52,7 @@ class SecretFolder
     public function getOrganization(): Organization { return $this->organization; }
     public function getName(): string { return $this->name; }
     public function getParent(): ?SecretFolder { return $this->parent; }
+    public function setParent(SecretFolder $parent): void { $this->parent = $parent; }
     public function getSecrets(): Collection { return $this->secrets; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function setName(string $name): void { $this->name = $name; }
